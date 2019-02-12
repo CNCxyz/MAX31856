@@ -1,0 +1,9 @@
+<application>
+  <component name="Arduino Support Settings">
+    <option name="authorEMail" value="info@cnc.xyz" />
+    <option name="authorName" value="CNC.xyz" />
+    <option name="libraryDisplayName" value="MAX31856" />
+    <option name="programmerId" value="arduinoisp" />
+    <option name="programmerName" value="ArduinoISP" />
+  </component>
+</application>
