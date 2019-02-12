@@ -1,9 +1,0 @@
-<application>
-  <component name="FileTypeManager" version="17">
-    <extensionMap>
-      <mapping ext="pde" type="ObjectiveC" />
-      <mapping ext="ino" type="ObjectiveC" />
-      <mapping pattern="LICENSE" type="PLAIN_TEXT" />
-    </extensionMap>
-  </component>
-</application>
