@@ -1,10 +1,14 @@
 # MAX31856 Arduino Library
 
-Thank you for taking a look at our library here on Github. Please consider purchasing one of our original [CNC.xyz MAX31856 Breakout Board](https://wiki.cnc.xyz/MAX31856) which was designed and is assembled in Denver Colorado.
+Thank you for taking a look at our library here on Github. Please consider purchasing one of our MAX31856 Breakout Boards which was designed and is assembled in Denver Colorado.
 
 Find our MAX31856 board on Amazon:
 
 [AMAZON: CNC.xyz MAX31856 Thermocouple Breakout Board](https://www.amazon.com/gp/product/B07N7RXQF6/ref=as_li_tl?ie=UTF8&camp=1789&creative=9325&creativeASIN=B07N7RXQF6&linkCode=as2&tag=09-87-54-87-20&linkId=ab698e830c08b9e2140e961d868c8fec)
+
+View our Wiki, which contains EAGLE files to build your own here:
+
+[WIKI: CNC.xyz MAX31856 Breakout Boards](https://wiki.cnc.xyz/MAX31856)
 
 ### About MAX31856
 
