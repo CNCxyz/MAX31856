@@ -4,7 +4,7 @@ Thank you for taking a look at our library here on Github. Please consider purch
 
 Find our MAX31856 board on Amazon:
 
-[![Buy Now on Amazon](https://ir-na.amazon-adsystem.com/e/ir?t=09-87-54-87-20&l=am2&o=1&a=B07N7RXQF6)](https://www.amazon.com/gp/product/B07N7RXQF6/ref=as_li_tl?ie=UTF8&camp=1789&creative=9325&creativeASIN=B07N7RXQF6&linkCode=as2&tag=09-87-54-87-20&linkId=ab698e830c08b9e2140e961d868c8fec)
+[AMAZON: CNC.xyz MAX31856 Thermocouple Breakout Board](https://www.amazon.com/gp/product/B07N7RXQF6/ref=as_li_tl?ie=UTF8&camp=1789&creative=9325&creativeASIN=B07N7RXQF6&linkCode=as2&tag=09-87-54-87-20&linkId=ab698e830c08b9e2140e961d868c8fec)
 
 ### About MAX31856
 
