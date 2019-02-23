@@ -22,7 +22,7 @@ _sck(-1), _miso(-1), _mosi(-1), _tc_type(MAX31856_TC_TYPE_K) {
     @param  tc [in]: thremocouple type
     @retval None
 */
-CNCxyz_MAX31856::CNCxyz_MAX31856(const int8_t cs, const MAX31856_TC_TYPE_MaskT tc) :
+CNCxyz_MAX31856::CNCxyz_MAX31856(const int8_t cs, const MAX31856_TCTypeT tc) :
   _cs(cs), _tc_type(tc), _sck(-1), _miso(-1), _mosi(-1) {
 }
 
@@ -49,7 +49,7 @@ CNCxyz_MAX31856::CNCxyz_MAX31856(const int8_t cs, const int8_t mosi,
     @retval None
 */
 CNCxyz_MAX31856::CNCxyz_MAX31856(const int8_t cs, const int8_t mosi,
-  const int8_t miso, const int8_t sck, const MAX31856_TC_TYPE_MaskT tc) :
+  const int8_t miso, const int8_t sck, const MAX31856_TCTypeT tc) :
   _cs(cs), _mosi(mosi), _miso(miso), _sck(sck), _tc_type(tc) {
 }
 
@@ -77,9 +77,8 @@ void CNCxyz_MAX31856::begin(void) {
     @param  tc [in]: thremocouple type
     @retval None
 */
-void CNCxyz_MAX31856::setThermocoupleType(const MAX31856_TC_TYPE_MaskT tc) {
-  uint8_t CR1 = read(MAX31856_REG_CR1);
-  CR1 &= 0xF0;
+void CNCxyz_MAX31856::setThermocoupleType(const MAX31856_TCTypeT tc) {
+  uint8_t CR1 = read(MAX31856_REG_CR1) & 0xF0;
   CR1 |= (uint8_t)tc;
   write(MAX31856_REG_CR1, CR1);
 }
@@ -89,9 +88,41 @@ void CNCxyz_MAX31856::setThermocoupleType(const MAX31856_TC_TYPE_MaskT tc) {
     @param  None
     @retval Thermocouple type
 */
-MAX31856_TC_TYPE_MaskT CNCxyz_MAX31856::getThermocoupleType(void) {
-  MAX31856_TC_TYPE_MaskT x = (MAX31856_TC_TYPE_MaskT)(read(MAX31856_REG_CR1) & 0x0F);
+MAX31856_TCTypeT CNCxyz_MAX31856::getThermocoupleType(void) {
+  MAX31856_TCTypeT x = (MAX31856_TCTypeT)(read(MAX31856_REG_CR1) & 0x0F);
   return x;
+}
+
+/**
+    @brief  Execute temperature conversion
+    @param  None
+    @retval None
+    @note   Blocks until the end of conversion
+*/
+void CNCxyz_MAX31856::convert(void) {
+  // Get current settings  
+  uint16_t conversionTime_ms;
+  uint8_t samples = getAvergingMode();
+  MAX31856_FilterT noiseFilter = getNoiseFilter();
+  
+  // Start single conversion
+  uint8_t CR0 = read(MAX31856_REG_CR0);
+  CR0 &= ~MAX31856_REG_CR0_AUTOCONVERT;
+  CR0 |= MAX31856_REG_CR0_1SHOT;
+  write(MAX31856_REG_CR0, CR0);
+
+  // Calculate conversion time(p.20)
+  switch (noiseFilter) {
+    case MAX31856_NoiseFilter60Hz:
+      conversionTime_ms = T_CONV_60Hz_ms + (samples - 1) * 34;
+      break;
+    case MAX31856_NoiseFilter50Hz:
+      conversionTime_ms = T_CONV_50Hz_ms + (samples - 1) * 40;
+      break;
+  }
+
+  // Wait until the end of conversion
+  delay(conversionTime_ms);
 }
 
 /**
@@ -100,8 +131,6 @@ MAX31856_TC_TYPE_MaskT CNCxyz_MAX31856::getThermocoupleType(void) {
     @retval Hot junction temperature in Celsius degrees
 */
 float CNCxyz_MAX31856::readThermocouple(void) {
-  convert(); // Perform single conversion
-
   // Read Linearized TC temperature registers
   uint8_t buf[3];
   readMultiple(MAX31856_REG_LTCBH, buf, 3);
@@ -123,8 +152,6 @@ float CNCxyz_MAX31856::readThermocouple(void) {
     @retval Cold junction temperature in Celsius degrees
 */
 float CNCxyz_MAX31856::readColdJunction(void) {
-  convert(); // Perform single conversion
-
   // Reading cold-junction temperature registers
   uint8_t buf[2];
   readMultiple(MAX31856_REG_CJTH, buf, 2);
@@ -140,12 +167,25 @@ float CNCxyz_MAX31856::readColdJunction(void) {
     @brief  Sets thermocouple voltage conversion averaging mode
     @param  avgMask[in] : number of samples to be averaged during conversion
     @retval None
+    @note   Averaging mode can't be changed during conversion
 */
 void CNCxyz_MAX31856::setAvergingMode(const MAX31856_AVGSEL_MaskT avgMask) {
+  // Disable automatic conversion for changing averaging mode
+  MAX31856_ConversionModeT conversionMode = getConversionMode();
+  if (MAX31856_ConversionMode_Auto == conversionMode) {
+    setConversionMode(MAX31856_ConversionMode_NormOff);
+  }
+
+  // Set new averaging mode
   uint8_t CR1 = read(MAX31856_REG_CR1);
   CR1 &= 0x8F;
   CR1 |= (uint8_t)avgMask;
   write(MAX31856_REG_CR1, CR1);
+
+  // Restore conversion mode
+  if (MAX31856_ConversionMode_Auto == conversionMode) {
+    setConversionMode(conversionMode);
+  }
 }
 
 /**
@@ -185,7 +225,7 @@ void CNCxyz_MAX31856::setNoiseFilter(const MAX31856_FilterT filter) {
 }
 
 /**
-    @brief  Gets moise rejection filter option
+    @brief  Gets noise rejection filter option
     @param  None
     @retval Noise rejection filter option
 */
@@ -193,6 +233,180 @@ MAX31856_FilterT CNCxyz_MAX31856::getNoiseFilter(void) {
   uint8_t filterFlag = read(MAX31856_REG_CR0) & 0x01;
 
   return filterFlag ? MAX31856_NoiseFilter50Hz : MAX31856_NoiseFilter60Hz;
+}
+
+
+/**
+    @brief  Reads fault register
+    @param  None
+    @retval Fault register value
+*/
+uint8_t CNCxyz_MAX31856::readFault(void) {
+  return read(MAX31856_REG_SR);
+}
+
+/**
+    @brief  Sets the fault detection range for the thermocouple
+    @param  low[in] : low border, Celsius degrees
+    @param  high[in] : high border, Celsius degrees
+    @retval None
+*/
+void CNCxyz_MAX31856::setThermocoupleRange(const float low, const float high) {
+  uint8_t buf[2];
+  uint8_t sign = 0;
+
+  // Setting low value
+  float absVal = low;
+
+  // Storing sign
+  if (low < 0) {
+    sign = 0x80;
+    absVal = -low;
+  }
+
+  // Converting to register values
+  buf[0] = (uint8_t)(absVal / (1 << 4)) & ~0x80; // MSB
+  buf[0] |= sign; // Restoring sign
+  buf[1] = (uint8_t)(absVal * (1 << 4)); // LSB
+
+  // Writing low threshold
+  writeMultiple(MAX31856_REG_LTLFTH, buf, 2);
+
+  // Setting high value
+  absVal = high;
+
+  // Storing sign
+  if (high < 0) {
+    sign = 0x80;
+    absVal = -high;
+  }
+
+  // Converting to register values
+  buf[0] = (uint8_t)(absVal / (1 << 4)) & ~0x80; // MSB
+  buf[0] |= sign; // Restoring sign
+  buf[1] = (uint8_t)(absVal * (1 << 4)); // LSB
+
+  // Writing high threshold
+  writeMultiple(MAX31856_REG_LTHFTH, buf, 2);
+}
+
+/**
+    @brief  Sets fault detection range for the cold junction
+    @param  low[in] : low border, Celsius degrees
+    @param  high[in] : high border, Celsius degrees
+    @retval None
+*/
+void CNCxyz_MAX31856::setColdJunctionRange(const int8_t low, const int8_t high) {
+  write(MAX31856_REG_CJLF, (uint8_t)low);
+  write(MAX31856_REG_CJHF, (uint8_t)high);
+}
+
+/**
+    @brief  Sets the cold junction temperature offset
+    @param  offset[in] : cold junction temperature offset [-8...7,9375], Celsius degrees
+    @retval None
+*/
+void CNCxyz_MAX31856::setColdJunctionOffset(const float offset) {
+  float absVal = offset;
+  uint8_t sign = 0;
+  uint8_t regVal = 0;
+  
+  // Storing sign
+  if (offset < 0) {
+    sign = 0x80;
+    absVal = -offset;
+  }
+
+  // Converting to register value
+  regVal = (uint8_t)(absVal * (1 << 4)) & ~0x80;
+  
+  // Restoring sign
+  regVal |= sign; 
+
+
+  // Writing offset to register
+  write(MAX31856_REG_CJTO, regVal);
+}
+
+/**
+    @brief  Sets the cold junction temperature (for external sensor)
+    @param  temperature[in] : cold junction temperature [-128, 127.98438], Celsius degrees
+    @retval None
+*/
+void CNCxyz_MAX31856::setColdJunctionTemperature(const float temperature) {
+  uint8_t buf[2];
+  uint8_t sign = 0;
+  float absVal = temperature;
+
+  // Storing sign
+  if (temperature < 0) {
+    sign = 0x80;
+    absVal = -temperature;
+  }
+
+  // Converting to register values
+  buf[0] = (uint8_t)(absVal) & ~0x80; // MSB
+  buf[0] |= sign; // Restoring sign
+  buf[1] = (uint8_t)(absVal * (1 << 8)) & 0xFC; // LSB
+
+  // Writing offset tempreature
+  writeMultiple(MAX31856_REG_CJTH, buf, 2);
+}
+
+/**
+    @brief  Sets the conversion mode
+    @param  mode[in] : conversion mode to be set
+    @retval None
+*/
+void CNCxyz_MAX31856::setConversionMode(const MAX31856_ConversionModeT mode) {
+  uint8_t CR0 = read(MAX31856_REG_CR0);
+  CR0 &= ~MAX31856_ConversionMode_Auto;
+  CR0 |= mode;
+  write(MAX31856_REG_CR0, CR0);
+}
+
+/**
+    @brief  Gets the current conversion mode
+    @param  None
+    @retval Current conversion mode
+*/
+MAX31856_ConversionModeT CNCxyz_MAX31856::getConversionMode(void) {
+  return (MAX31856_ConversionModeT) (MAX31856_ConversionMode_Auto & read(MAX31856_REG_CR0));
+}
+
+/**
+    @brief  Enables/disables cold junction temperature sensor
+    @param  command[in] : new state
+    @retval None
+*/
+void CNCxyz_MAX31856::setColdJunctionEnable(MAX31856_ColdJunctionStateT state) {
+  uint8_t CR0 = read(MAX31856_REG_CR0);
+  CR0 &= ~MAX31856_ColdJunctionState_Disabled;
+  CR0 |= state;
+  write(MAX31856_REG_CR0, CR0);
+}
+
+/**
+    @brief  Sets fault mode
+    @param  mode[in] : new mode
+    @retval None
+*/
+void CNCxyz_MAX31856::setFaultMode(MAX31856_FaultModeT mode) {
+  uint8_t CR0 = read(MAX31856_REG_CR0);
+  CR0 &= ~MAX31856_FaultMode_Interrupt;
+  CR0 |= mode;
+  write(MAX31856_REG_CR0, CR0);
+}
+
+/**
+    @brief  Clears fault flags
+    @param  None
+    @retval None
+*/
+void CNCxyz_MAX31856::clearFaults(void) {
+  uint8_t CR0 = read(MAX31856_REG_CR0);
+  CR0 |= MAX31856_REG_CR0_FAULTCLR;
+  write(MAX31856_REG_CR0, CR0);
 }
 
 //------------------------------ Private functions ----------------------------
@@ -300,35 +514,4 @@ uint8_t CNCxyz_MAX31856::transfer(const uint8_t val) {
     digitalWrite(_mosi, val & (1 << bit) ? HIGH : LOW);
   }
   return out;
-}
-
-/**
-    @brief  Execute temperature conversion
-    @param  None
-    @retval None
-*/
-void CNCxyz_MAX31856::convert(void) {
-  // Get current settings  
-  uint16_t convertionTime_ms;
-  uint8_t samples = getAvergingMode();
-  MAX31856_FilterT noiseFilter = getNoiseFilter();
-  
-  // Start single conversion
-  uint8_t CR0 = read(MAX31856_REG_CR0);
-  CR0 &= ~MAX31856_REG_CR0_AUTOCONVERT;
-  CR0 |= MAX31856_REG_CR0_1SHOT;
-  write(MAX31856_REG_CR0, CR0);
-
-  // Calculate conversion time(p.20)
-  switch (noiseFilter) {
-    case MAX31856_NoiseFilter60Hz:
-      convertionTime_ms = T_CONV_60Hz_ms + (samples - 1) * 34;
-      break;
-    case MAX31856_NoiseFilter50Hz:
-      convertionTime_ms = T_CONV_50Hz_ms + (samples - 1) * 40;
-      break;
-  }
-
-  // Wait until the end of conversion
-  delay(convertionTime_ms);
 }

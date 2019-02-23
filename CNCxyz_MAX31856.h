@@ -57,7 +57,7 @@ typedef enum {
   MAX31856_TC_TYPE_T			=	0b0111,
   MAX31856_VMODE_8				= 0b1000, // Voltage Mode, Gain = 8. Code = 8 x 1.6 x 217 x VIN
   MAX31856_VMODE_32				= 0b1100, // Voltage Mode, Gain = 32. Code = 32 x 1.6 x 217 x VIN
-} MAX31856_TC_TYPE_MaskT;
+} MAX31856_TCTypeT;
 
 // Fault Mask Register (Datasheet Page 21)
 typedef enum {
@@ -77,29 +77,58 @@ typedef enum {
   MAX31856_NoiseFilter50Hz = 0x01,  // Selects rejection of 50Hz and its harmonics
 } MAX31856_FilterT;
 
+// Conversion mode option
+typedef enum {
+  MAX31856_ConversionMode_NormOff = 0x00,  // Selects Normally Off mode
+  MAX31856_ConversionMode_Auto = 0x80,    // Selects Auto mode
+} MAX31856_ConversionModeT;
+
+// Cold junction state
+typedef enum {
+  MAX31856_ColdJunctionState_Enabled = 0x00,  // Cold junction temperature sensor enabled
+  MAX31856_ColdJunctionState_Disabled = 0x04, // Cold junction temperature sensor disabled
+} MAX31856_ColdJunctionStateT;
+
+// Fault mode
+typedef enum {
+  MAX31856_FaultMode_Comparator = 0x00, // Comparator mode
+  MAX31856_FaultMode_Interrupt = 0x04,  // Interrupt mode
+} MAX31856_FaultModeT;
+
 class CNCxyz_MAX31856 {
 public:
   CNCxyz_MAX31856(const int8_t cs);
-  CNCxyz_MAX31856(const int8_t cs, const MAX31856_TC_TYPE_MaskT tc);
+  CNCxyz_MAX31856(const int8_t cs, const MAX31856_TCTypeT tc);
   CNCxyz_MAX31856(const int8_t cs, const int8_t mosi, const int8_t miso, const int8_t sck);
   CNCxyz_MAX31856(const int8_t cs, const int8_t mosi, const int8_t miso, const int8_t sck, 
-    const MAX31856_TC_TYPE_MaskT tc);
+    const MAX31856_TCTypeT tc);
   void begin(void);
-  void setThermocoupleType(const MAX31856_TC_TYPE_MaskT tc);
-  MAX31856_TC_TYPE_MaskT getThermocoupleType(void);
+  void setThermocoupleType(const MAX31856_TCTypeT tc);
+  MAX31856_TCTypeT getThermocoupleType(void);
+  void convert(void);
   float readThermocouple(void);
   float readColdJunction(void);
   void setAvergingMode(const MAX31856_AVGSEL_MaskT avgMask);
   uint8_t getAvergingMode(void);
   void setNoiseFilter(const MAX31856_FilterT filter);
   MAX31856_FilterT getNoiseFilter(void);
-
+  uint8_t readFault(void);
+  void setThermocoupleRange(const float low, const float high);
+  void setColdJunctionRange(const int8_t low, const int8_t high);
+  void setColdJunctionOffset(const float offset);
+  void setColdJunctionTemperature(const float temperature);
+  void setConversionMode(const MAX31856_ConversionModeT mode);
+  MAX31856_ConversionModeT getConversionMode(void);
+  void setColdJunctionEnable(MAX31856_ColdJunctionStateT state);
+  void setFaultMode(MAX31856_FaultModeT mode);
+  void clearFaults(void);
+  
 private:
   int8_t _cs;
   int8_t _sck;
   int8_t _miso;
   int8_t _mosi;
-  MAX31856_TC_TYPE_MaskT _tc_type;
+  MAX31856_TCTypeT _tc_type;
 
   uint8_t read(const MAX31856_addressT address);
   void readMultiple(const MAX31856_addressT address, uint8_t* const rx_buf, const uint8_t size);
@@ -107,7 +136,6 @@ private:
   void writeMultiple(const MAX31856_addressT address, const uint8_t* const tx_buf, 
     const uint8_t size);
   uint8_t transfer(const uint8_t val);
-  void convert(void);
 };
 
 #endif
