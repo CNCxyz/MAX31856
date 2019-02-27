@@ -69,6 +69,7 @@ void CNCxyz_MAX31856::begin(void) {
   } else {
     SPI.begin();
   }
+  write(MAX31856_REG_CR0, 0);
   setThermocoupleType(_tc_type);
 }
 
@@ -157,7 +158,7 @@ float CNCxyz_MAX31856::readColdJunction(void) {
   readMultiple(MAX31856_REG_CJTH, buf, 2);
 
   // Converting code to real temperature
-  int16_t temp_code = (int16_t)buf[0] << 8 + (int16_t)buf[1];
+  int16_t temp_code = ((int16_t)buf[0] << 8) | (int16_t)buf[1];
   float temperature = (float)temp_code / (1 << 8);
 
   return temperature;
