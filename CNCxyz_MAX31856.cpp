@@ -410,6 +410,28 @@ void CNCxyz_MAX31856::clearFaults(void) {
   write(MAX31856_REG_CR0, CR0);
 }
 
+
+/**
+    @brief  Sets the open-circuit detection mode
+    @param  mode[in] : open-ciruit detection mode to be set
+    @retval None
+*/
+void CNCxyz_MAX31856::setOCDetectionMode(const MAX31856_OCModeT mode) {
+  uint8_t CR0 = read(MAX31856_REG_CR0);
+  CR0 &= ~MAX31856_OCMode_100ms;
+  CR0 |= mode;
+  write(MAX31856_REG_CR0, CR0);
+}
+
+/**
+    @brief  Gets the open-circuit detection mode
+    @param  None
+    @retval Current open-circuit detection mode
+*/
+MAX31856_OCModeT CNCxyz_MAX31856::getOCDetectionMode(void) {
+  return (MAX31856_OCModeT) (MAX31856_OCMode_100ms & read(MAX31856_REG_CR0));
+}
+
 //------------------------------ Private functions ----------------------------
 /**
     @brief  Read MAX31856 register

@@ -95,6 +95,14 @@ typedef enum {
   MAX31856_FaultMode_Interrupt = 0x04,  // Interrupt mode
 } MAX31856_FaultModeT;
 
+// Open-circuit detection mode
+typedef enum {
+  MAX31856_OCMode_Disabled = 0x00,// Open-circuit fault disabled
+  MAX31856_OCMode_10ms = 0x10,    // Nominal detection time of 10 ms
+  MAX31856_OCMode_32ms = 0x20,    // Nominal detection time of 32 ms
+  MAX31856_OCMode_100ms = 0x30,   // Nominal detection time of 100 ms
+} MAX31856_OCModeT;
+
 class CNCxyz_MAX31856 {
 public:
   CNCxyz_MAX31856(const int8_t cs);
@@ -122,7 +130,9 @@ public:
   void setColdJunctionEnable(MAX31856_ColdJunctionStateT state);
   void setFaultMode(MAX31856_FaultModeT mode);
   void clearFaults(void);
-  
+  void setOCDetectionMode(const MAX31856_OCModeT mode);
+  MAX31856_OCModeT getOCDetectionMode(void);
+
 private:
   int8_t _cs;
   int8_t _sck;
