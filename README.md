@@ -24,7 +24,7 @@ View our Wiki, which contains EAGLE files to build your own here:
 
 ## Usage
 
-
+See the [example file](MAX31856_Example/MAX31856_Example.ino) for specific usage.
 
 ## License
 
